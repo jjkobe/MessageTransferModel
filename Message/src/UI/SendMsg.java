@@ -57,7 +57,7 @@ public class SendMsg extends JFrame {
         b_insert = new JButton("插入"); // 插入
         b_remove = new JButton("清空"); // 清除
 
-        b_insert.addActionListener(new ActionListener() { // 插入文字的事件
+        b_insert.addActionListener(new ActionListener() { // 插入文字的事件，这个就是发送按钮
             public void actionPerformed(ActionEvent e) {
                 insert(getFontAttrib());
                 addText.setText("");
