@@ -1,4 +1,4 @@
-package UI;
+package client;
 
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
@@ -11,7 +11,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
-import client.Client;
 
 public class SendMsg extends JFrame {
 
@@ -63,6 +62,7 @@ public class SendMsg extends JFrame {
                 String message =addText.getText().trim();
                 insert(getFontAttrib());
                 addText.setText("");
+                Client.sendMessage(message);
             }
         });
         b_remove.addActionListener(new ActionListener() { // 清除事件

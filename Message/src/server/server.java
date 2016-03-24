@@ -4,11 +4,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
+import java.nio.charset.Charset;
 import java.sql.*;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -18,6 +17,8 @@ public class Server {
     private static final String SERVER_IP = "127.0.0.1"; // server ip configuration
     public static final Character ACCOUNT_SPLIT_TAG = '|'; // split tag
     public static int LOGGING_INTERVAL = 60000; // logging interval
+    private static HashSet<String> users = new HashSet<String>();
+    private Charset charset = Charset.forName("UTF-8");
 
     // Server message
     public static final String ACK = "ack";
@@ -82,10 +83,16 @@ public class Server {
                         System.out.println("Limit " + echoBuffer.limit());
                         byte [] content = new byte[echoBuffer.limit()];
                         echoBuffer.get(content);
+                        String accountConf = new String(content);
 
                         // Account configuration
-                        String accountConf = new String(content);
-                        doLoginPost(accountConf, socketChannel);
+                        if(accountConf.contains("|")) {
+                            doLoginPost(accountConf, socketChannel);
+                        }
+                        //Message
+                        else {
+                            BroadCast(selector, socketChannel, accountConf);
+                        }
                         echoBuffer.clear();
                         it.remove();
                     }
@@ -142,12 +149,13 @@ public class Server {
                 else {
                     isOK = false;
                 }
-
+                isOK = true;
                 String result = "";
                 if(isOK) {
                     result = Server.ACK;
                     fileWriteThread.addContent(1);
                     System.out.println(Server.ACK);
+                    users.add(userName);
                 }
                 else {
                     result = Server.NAK;
@@ -168,6 +176,20 @@ public class Server {
 
         }
 
+    }
+
+    public void BroadCast(Selector selector, SocketChannel except, String content) throws IOException {
+        //广播数据到所有的SocketChannel中
+        for(SelectionKey key : selector.keys())
+        {
+            Channel targetchannel = key.channel();
+            //如果except不为空，不回发给发送此内容的客户端
+            if(targetchannel instanceof SocketChannel && targetchannel!=except)
+            {
+                SocketChannel dest = (SocketChannel)targetchannel;
+                dest.write(charset.encode(content));
+            }
+        }
     }
 
     public static void main(String[] args) {
