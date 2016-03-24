@@ -11,149 +11,170 @@ import java.nio.channels.SocketChannel;
 import java.sql.*;
 import java.util.Iterator;
 import java.util.Set;
-public class server {
-    public static final int serverport =5555;
-    public static final String isack="ack";
-    public static final String isnak="nak";
-    private  ByteBuffer echobuffer=ByteBuffer.allocate(1024);
-    private static FileWriteThreadInServer fileWriteThread=new FileWriteThreadInServer();
-    public server() {
+
+public class Server {
+
+    public static final int SERVER_PORT = 5555; // server port configuration
+    private static final String SERVER_IP = "127.0.0.1"; // server ip configuration
+    public static final Character ACCOUNT_SPLIT_TAG = '|'; // split tag
+    public static int LOGGING_INTERVAL = 60000; // logging interval
+
+    // Server message
+    public static final String ACK = "ack";
+    public static final String NAK = "nak";
+
+    // Message handler
+    public static final int BUF_SIZE = 1024;
+    private ByteBuffer echoBuffer;
+    private static FileWriteThreadInServer fileWriteThread; // Logging object
+
+    // Constructor
+    public Server() {
+        echoBuffer = ByteBuffer.allocate(BUF_SIZE);
+        fileWriteThread = new FileWriteThreadInServer();
 
     }
-    public static void main(String[] args) {
-        fileWriteThread.start();
-        new server().buildserver();
-    }
 
-    public void buildserver(){
+    public void buildServer(){
+
         try {
-            ServerSocketChannel ssc=ServerSocketChannel.open();
-            ssc.configureBlocking(false);
-            ServerSocket ss=ssc.socket();
-            ss.bind(new InetSocketAddress("10.0.1.6",serverport));
-            Selector selector=Selector.open();
-            SelectionKey skey=ssc.register(selector, SelectionKey.OP_ACCEPT);
+            /** Create socket channel **/
+            ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+            serverSocketChannel.configureBlocking(false);
+            ServerSocket serverSocket = serverSocketChannel.socket();
+            serverSocket.bind(new InetSocketAddress(SERVER_IP, Server.SERVER_PORT) );
+
+            /** Register selector **/
+            Selector selector = Selector.open();
+            SelectionKey selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+            /** Server side listening **/
             while(true)
             {
-                int num=selector.select();
-                if(num<1)
-                {
+                int num = selector.select();
+                if(num < 1) {
                     continue;
                 }
+
                 Set selectedKeys=selector.selectedKeys();
                 Iterator it=selectedKeys.iterator();
-                while(it.hasNext())
-                {
-                    SelectionKey key=(SelectionKey) it.next();
-                    if((key.readyOps()&SelectionKey.OP_ACCEPT)==SelectionKey.OP_ACCEPT)
-                    {
-                        ServerSocketChannel serverchannel=(ServerSocketChannel) key.channel();
-                        SocketChannel sc=serverchannel.accept();
-                        sc.configureBlocking(false);
-                        SelectionKey newKey=sc.register(selector,SelectionKey.OP_READ);
-                        it.remove();
-                        System.out.print("get connection from"+sc);
+                while(it.hasNext()) {
 
-                    }
-                    else{
-                        if((key.readyOps()&SelectionKey.OP_READ)==SelectionKey.OP_READ)
-                        {
-                            SocketChannel sc=(SocketChannel) key.channel();
-                            int bytesEchoed=0;
-                            while((bytesEchoed=sc.read(echobuffer))>0)
-                            {
-                                System.out.println("bytesEchoed"+bytesEchoed);
-                            }
-                            echobuffer.flip();
-                            System.out.println("limet "+echobuffer.limit());
-                            byte [] content =new byte[echobuffer.limit()];
-                            echobuffer.get(content);
-                            String result=new String(content);
-                            doPost(result,sc);
-                            echobuffer.clear();
-                            it.remove();
+                    SelectionKey key=(SelectionKey) it.next();
+
+                    if((key.readyOps()&SelectionKey.OP_ACCEPT) == SelectionKey.OP_ACCEPT) { // New connection
+                        ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+                        SocketChannel socketChannel = serverChannel.accept();
+                        socketChannel.configureBlocking(false);
+                        SelectionKey newKey = socketChannel.register(selector,SelectionKey.OP_READ);
+                        it.remove();
+
+                        System.out.print("Get connection from: " + socketChannel);
+
+                    } else if((key.readyOps()&SelectionKey.OP_READ) == SelectionKey.OP_READ) { // Account configuration
+                        SocketChannel socketChannel = (SocketChannel) key.channel();
+                        int bytesEchoed = 0;
+                        while((bytesEchoed=socketChannel.read(echoBuffer)) > 0) {
+                            System.out.println("bytesEchoed: " + bytesEchoed);
                         }
+
+                        echoBuffer.flip();
+                        System.out.println("Limit " + echoBuffer.limit());
+                        byte [] content = new byte[echoBuffer.limit()];
+                        echoBuffer.get(content);
+
+                        // Account configuration
+                        String accountConf = new String(content);
+                        doLoginPost(accountConf, socketChannel);
+                        echoBuffer.clear();
+                        it.remove();
                     }
                 }
             }
+
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
     }
-    public  void doPost(String str, SocketChannel sc) {
-        boolean isok=false;
-        int index=str.indexOf('|');
-        if(index>0)
-        {
-            String name=str.substring(0,index);
-            String pswd=str.substring(index+1);
-            String sql="select name,password from login where name='"+name+"'and password='"+pswd+"'";
+
+    public  void doLoginPost(String account, SocketChannel socketChannel) {
+
+        boolean isOK = false;
+
+        int index=account.indexOf(Server.ACCOUNT_SPLIT_TAG);
+        if(index > 0) {
+
+            // account info
+            String userName = account.substring(0,index);
+            String passwd = account.substring(index+1);
+
+            // query
+            String sql="select name,password from login where name='" + userName + "'and password='" + passwd+"'";
             Connection conn = null;
             PreparedStatement stmt = null;
-            try {
-                conn = SqlConn.getConnection();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            try {
-                stmt = conn.prepareStatement(sql);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
             ResultSet rs = null;
             try {
+                conn = SqlConn.getConnection();
+                stmt = conn.prepareStatement(sql);
                 rs = stmt.executeQuery();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            boolean f=false;
-            try {
-                f=rs.first();
-            } catch (SQLException e1) {
-                // TODO Auto-generated catch block
-                e1.printStackTrace();
-            }
-            if(pswd==null)
-            {
-                pswd="";
-            }if(name!=null)
-        {
-            if(f)
-            {
-                isok=true;
 
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
-            else{
-                isok=false;
 
-            }
-            String result="";
-            if(isok)
-            {
-                result="ack";
-                fileWriteThread.addContent(1);
-                System.out.println("ack");
-            }
-            else{
-                result="nak";
-                fileWriteThread.addContent(0);
-                System.out.println("nak");
-            }
-            ByteBuffer bb=ByteBuffer.allocate(result.length());
-            bb.put(result.getBytes());
-            bb.flip();
+            boolean queryTag = false;
             try {
-                sc.write(bb);
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                queryTag = rs.first();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
             }
-            bb.clear();
-        }
+
+            /** Authentication **/
+            if(passwd == null) {
+                passwd="";
+            }
+            if(userName != null) {
+
+                if(queryTag) {
+                    isOK = true;
+                }
+                else {
+                    isOK = false;
+                }
+
+                String result = "";
+                if(isOK) {
+                    result = Server.ACK;
+                    fileWriteThread.addContent(1);
+                    System.out.println(Server.ACK);
+                }
+                else {
+                    result = Server.NAK;
+                    fileWriteThread.addContent(0);
+                    System.out.println(Server.NAK);
+                }
+
+                ByteBuffer byteBuffer = ByteBuffer.allocate(result.length());
+                byteBuffer.put(result.getBytes());
+                byteBuffer.flip();
+                try {
+                    socketChannel.write(byteBuffer);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                byteBuffer.clear();
+            }
 
         }
 
     }
+
+    public static void main(String[] args) {
+        Server server = new Server();
+        server.fileWriteThread.start();// Logging
+        server.buildServer(); // Start server
+    }
+
 }
 

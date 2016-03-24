@@ -1,5 +1,7 @@
 package client;
 
+import server.Server;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -13,7 +15,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 
-public class client extends JFrame{
+public class Client extends JFrame{
     private JLabel jLabel1;
     private JTextField usertext;
     private JLabel jLabel2;
@@ -23,7 +25,7 @@ public class client extends JFrame{
     private static FileWriteThread fileWriteThread=new FileWriteThread();
     String name;
     String password;
-    public client() {
+    public Client() {
         {
             getContentPane().setLayout(null);
         }
@@ -76,13 +78,13 @@ public class client extends JFrame{
 
                         public void run() {
                             try {
-                                Socket s=new Socket("10.0.1.6",5555);
+                                Socket s=new Socket("127.0.0.1", Server.SERVER_PORT);
                                 OutputStream os;
 
                                 InputStream is;
                                 os=s.getOutputStream();
                                 os.write(name.getBytes());
-                                os.write('|');
+                                os.write(Server.ACCOUNT_SPLIT_TAG);
                                 os.write(password.getBytes());
                                 os.flush();
                                 Thread.sleep(1000);
@@ -93,7 +95,7 @@ public class client extends JFrame{
                                 is.read(bytes);
                                 String result=new String(bytes);
                                 System.out.println("result: "+result);
-                                if(result.equals("ack"))
+                                if(result.equals(Server.ACK))
                                 {
                                     hint.setText("验证成功，欢迎光临");
                                     fileWriteThread.addContent(1);
@@ -103,13 +105,10 @@ public class client extends JFrame{
                                     fileWriteThread.addContent(0);
                                 }
                             } catch (UnknownHostException e) {
-                                // TODO Auto-generated catch block
                                 e.printStackTrace();
                             } catch (IOException e) {
-                                // TODO Auto-generated catch block
                                 e.printStackTrace();
                             } catch (InterruptedException e) {
-                                // TODO Auto-generated catch block
                                 e.printStackTrace();
                             }
                         }
@@ -131,7 +130,7 @@ public class client extends JFrame{
 
     public static void main(String[] args) {
         fileWriteThread.start();
-        new client();
+        new Client();
     }
 
 }
