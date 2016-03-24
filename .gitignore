@@ -1,3 +1,6 @@
 *.class
 out/*
 .idea/*
+Message/.idea/*
+Message/ServerLog
+Message/clientLog
