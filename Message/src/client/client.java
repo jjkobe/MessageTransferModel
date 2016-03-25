@@ -124,6 +124,33 @@ public class Client extends JFrame implements ActionListener{
     public static void main(String[] args) {
         fileWriteThread.start();
         cli=new Client();
+        cli.acMsg();
+    }
+
+    //接收服务端信息
+    public void acMsg(){
+        try {
+            Socket s = new Socket("127.0.0.1", Server.SERVER_PORT);
+            InputStream is;
+            while (true) {
+                is = s.getInputStream();
+                int len = is.available();
+               // System.out.println("length: " + len);
+                byte[] bytes = new byte[len];
+                is.read(bytes);
+                String result = new String(bytes);
+                System.out.println("result: " + result);//输出到界面？？？？？？？？？？？？
+               //response
+                OutputStream osRe;
+                osRe=s.getOutputStream();
+                osRe.write("Received......".getBytes());
+                osRe.flush();
+            }
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -182,12 +209,35 @@ public class Client extends JFrame implements ActionListener{
                         passtext.setText(null);
                         hint.setText("用户名或密码有误，请重新输入");
                         fileWriteThread.addContent(0);
+                        new SendMsg();
                     }
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }).start();
+    }
+
+    //send message to server
+    public static  void sendMessage(String message){
+        new Thread(new Runnable(){
+
+            public void run() {
+                try {
+                    Socket s=new Socket("127.0.0.1",Server.SERVER_PORT);
+
+                    OutputStream os;
+                    os=s.getOutputStream();
+                    os.write(message.getBytes());
+                    os.flush();
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
