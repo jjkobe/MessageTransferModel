@@ -81,10 +81,12 @@ public class Server {
                         SocketChannel socketChannel = (SocketChannel) key.channel();
                         int bytesEchoed = 0;
                         while((bytesEchoed=socketChannel.read(echoBuffer)) > 0) {
-                            bytesEchoed += 1;
-                            //System.out.println("bytesEchoed: " + bytesEchoed);
+                            //bytesEchoed += 1;
+                            System.out.println("bytesEchoed: " + bytesEchoed);
                         }
-                        System.out.println("bytesEchoed: " + bytesEchoed);
+                        if(bytesEchoed > 0) {
+                            System.out.println("bytesEchoed: " + bytesEchoed);
+                        }
                         echoBuffer.flip();
                         //System.out.println("Limit " + echoBuffer.limit());
                         byte [] content = new byte[echoBuffer.limit()];
