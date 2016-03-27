@@ -141,12 +141,15 @@ public class Client extends JFrame implements ActionListener{
                 byte[] bytes = new byte[len];
                 is.read(bytes);
                 String result = new String(bytes);
-                System.out.println("result: " + result);//输出到界面？？？？？？？？？？？？
-                //response
-                OutputStream osRe;
-                osRe=s.getOutputStream();
-                osRe.write("Received......".getBytes());
-                osRe.flush();
+                if(result.length() > 0) {
+                    System.out.println("result: " + result);//输出到界面？？？？？？？？？？？？
+                    //response
+                    OutputStream osRe;
+                    osRe=s.getOutputStream();
+                    osRe.write("Received......".getBytes());
+                    osRe.flush();
+                }
+
             }
         } catch (UnknownHostException e) {
             e.printStackTrace();
@@ -194,11 +197,16 @@ public class Client extends JFrame implements ActionListener{
                     os.write(Server.ACCOUNT_SPLIT_TAG);
                     os.write(password.getBytes());
                     os.flush();
-                    //Thread.sleep(1000);
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
 
                     int len = is.available();
                     //System.out.println("length: "+len);
                     byte[] bytes=new byte[len];
+
                     is.read(bytes);
                     String result=new String(bytes);
                     System.out.println("Login result: "+result);
@@ -208,6 +216,7 @@ public class Client extends JFrame implements ActionListener{
                         fileWriteThread.addContent(1);
                         cli.dispose();//跳到聊天页面，马奥宇注意，这里应该把我登录时保持的连接（就是一些变量）作为参数传给下一个类，应该是这样吧。
                         new SendMsg();
+                        //acMsg(); // new thread
 
                     }else{
                         passtext.setText(null);
