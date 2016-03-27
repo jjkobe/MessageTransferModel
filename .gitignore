@@ -4,3 +4,4 @@ out/*
 Message/.idea/*
 Message/ServerLog
 Message/clientLog
+Message/lib/*

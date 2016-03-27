@@ -7,9 +7,9 @@ public class SqlConn {
 
     // Connection configurations
     private static final String driver = "com.mysql.jdbc.Driver";
-    private static final String url="jdbc:mysql://116.229.77.14:3306/flower?useUnicode=true&characterEncoding=UTF-8";
+    private static final String url="jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&characterEncoding=UTF-8";
     private static final String username="root";
-    private static final String password="2333";
+    private static final String password="576677";
     private static Connection conn=null;
 
     static {
