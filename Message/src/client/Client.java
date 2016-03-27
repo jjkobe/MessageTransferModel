@@ -124,7 +124,8 @@ public class Client extends JFrame implements ActionListener{
     public static void main(String[] args) {
         fileWriteThread.start();
         cli=new Client();
-        cli.acMsg();
+        //cli.acMsg();
+
     }
 
     //接收服务端信息
@@ -132,15 +133,16 @@ public class Client extends JFrame implements ActionListener{
         try {
             Socket s = new Socket("127.0.0.1", Server.SERVER_PORT);
             InputStream is;
+
             while (true) {
                 is = s.getInputStream();
                 int len = is.available();
-               // System.out.println("length: " + len);
+                // System.out.println("length: " + len);
                 byte[] bytes = new byte[len];
                 is.read(bytes);
                 String result = new String(bytes);
                 System.out.println("result: " + result);//输出到界面？？？？？？？？？？？？
-               //response
+                //response
                 OutputStream osRe;
                 osRe=s.getOutputStream();
                 osRe.write("Received......".getBytes());
@@ -161,6 +163,7 @@ public class Client extends JFrame implements ActionListener{
 
             name = usertext.getText().trim();
             password = passtext.getText().trim();
+
             if (password.equals("")) {
                 password = "";
             }
@@ -168,6 +171,7 @@ public class Client extends JFrame implements ActionListener{
                 hint.setText("正在验证客户端，请稍后......");
                 start();
             }
+
         }
         else if("Exit".equals(getCommand)){
 
@@ -183,39 +187,38 @@ public class Client extends JFrame implements ActionListener{
             public void run() {
                 try {
                     Socket s=new Socket("127.0.0.1",Server.SERVER_PORT);
-                    OutputStream os;
+                    OutputStream os = s.getOutputStream();
+                    InputStream is = s.getInputStream();
 
-                    InputStream is;
-                    os=s.getOutputStream();
                     os.write(name.getBytes());
                     os.write(Server.ACCOUNT_SPLIT_TAG);
                     os.write(password.getBytes());
                     os.flush();
-                    Thread.sleep(1000);
-                    is=s.getInputStream();
-                    int len=is.available();
-                    System.out.println("length: "+len);
+                    //Thread.sleep(1000);
+
+                    int len = is.available();
+                    //System.out.println("length: "+len);
                     byte[] bytes=new byte[len];
                     is.read(bytes);
                     String result=new String(bytes);
-                    System.out.println("result: "+result);
+                    System.out.println("Login result: "+result);
                     if(result.equals(Server.ACK))
                     {
                         hint.setText("验证成功，欢迎光临");
                         fileWriteThread.addContent(1);
                         cli.dispose();//跳到聊天页面，马奥宇注意，这里应该把我登录时保持的连接（就是一些变量）作为参数传给下一个类，应该是这样吧。
                         new SendMsg();
+
                     }else{
                         passtext.setText(null);
                         hint.setText("用户名或密码有误，请重新输入");
                         fileWriteThread.addContent(0);
-                        new SendMsg();
+                        //new SendMsg();
+
                     }
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
@@ -231,8 +234,7 @@ public class Client extends JFrame implements ActionListener{
                 try {
                     Socket s=new Socket("127.0.0.1",Server.SERVER_PORT);
 
-                    OutputStream os;
-                    os=s.getOutputStream();
+                    OutputStream os = s.getOutputStream();
                     os.write(message.getBytes());
                     os.flush();
                 } catch (UnknownHostException e) {

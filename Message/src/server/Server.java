@@ -7,9 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.Charset;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 public class Server {
 
@@ -18,7 +16,9 @@ public class Server {
     public static final Character ACCOUNT_SPLIT_TAG = '|'; // split tag
     public static int LOGGING_INTERVAL = 60000; // logging interval
     private static HashSet<String> users = new HashSet<String>();
-    private Charset charset = Charset.forName("UTF-8");
+    public static Charset CHARSET = Charset.forName("UTF-8");
+
+    private Map<SocketChannel , MessageProcessThread> sKeyToMPThread;
 
     // Server message
     public static final String ACK = "ack";
@@ -34,6 +34,7 @@ public class Server {
         echoBuffer = ByteBuffer.allocate(BUF_SIZE);
         fileWriteThread = new FileWriteThreadInServer();
 
+        sKeyToMPThread = new HashMap<SocketChannel, MessageProcessThread>();
     }
 
     public void buildServer(){
@@ -67,34 +68,42 @@ public class Server {
                         ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
                         SocketChannel socketChannel = serverChannel.accept();
                         socketChannel.configureBlocking(false);
+
                         SelectionKey newKey = socketChannel.register(selector,SelectionKey.OP_READ);
+                        MessageProcessThread messageProcessThread = new MessageProcessThread(newKey , selector);
+                        sKeyToMPThread.put(socketChannel , messageProcessThread);
+
                         it.remove();
 
-                        System.out.print("Get connection from: " + socketChannel);
+                        System.out.print("Get login from: " + socketChannel);
 
                     } else if((key.readyOps()&SelectionKey.OP_READ) == SelectionKey.OP_READ) { // Account configuration
                         SocketChannel socketChannel = (SocketChannel) key.channel();
                         int bytesEchoed = 0;
                         while((bytesEchoed=socketChannel.read(echoBuffer)) > 0) {
-                            System.out.println("bytesEchoed: " + bytesEchoed);
+                            bytesEchoed += 1;
+                            //System.out.println("bytesEchoed: " + bytesEchoed);
                         }
-
+                        System.out.println("bytesEchoed: " + bytesEchoed);
                         echoBuffer.flip();
-                        System.out.println("Limit " + echoBuffer.limit());
+                        //System.out.println("Limit " + echoBuffer.limit());
                         byte [] content = new byte[echoBuffer.limit()];
                         echoBuffer.get(content);
-                        String accountConf = new String(content);
+                        String clientMessage = new String(content);
 
                         // Account configuration
-                        if(accountConf.contains("|")) {
-                            doLoginPost(accountConf, socketChannel);
+                        if(clientMessage.contains(ACCOUNT_SPLIT_TAG.toString())) {
+                            doLoginPost(clientMessage, socketChannel);
+
                         }
                         //Message
                         else {
-                            BroadCast(selector, socketChannel, accountConf);
+                            sKeyToMPThread.get(socketChannel).sendMessage(clientMessage);
+                            //BroadCast(selector, socketChannel, clientMessage);
                         }
                         echoBuffer.clear();
                         it.remove();
+
                     }
                 }
             }
@@ -149,18 +158,25 @@ public class Server {
                 else {
                     isOK = false;
                 }
-                isOK = true;
+                //isOK = true;
                 String result = "";
                 if(isOK) {
                     result = Server.ACK;
                     fileWriteThread.addContent(1);
-                    System.out.println(Server.ACK);
+                    System.out.println("Client " + socketChannel + "\tLogin results: " + Server.ACK);
+
+                    sKeyToMPThread.get(socketChannel).setLoginStatus(true);
+
                     users.add(userName);
+
                 }
                 else {
                     result = Server.NAK;
                     fileWriteThread.addContent(0);
-                    System.out.println(Server.NAK);
+                    System.out.println("Client " + socketChannel + "\tLogin results: " + Server.ACK);
+
+                    sKeyToMPThread.remove(socketChannel);
+
                 }
 
                 ByteBuffer byteBuffer = ByteBuffer.allocate(result.length());
@@ -187,7 +203,7 @@ public class Server {
             if(targetchannel instanceof SocketChannel && targetchannel!=except)
             {
                 SocketChannel dest = (SocketChannel)targetchannel;
-                dest.write(charset.encode(content));
+                dest.write(CHARSET.encode(content));
             }
         }
     }
