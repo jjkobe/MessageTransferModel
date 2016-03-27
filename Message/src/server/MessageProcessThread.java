@@ -10,6 +10,7 @@ import java.util.Queue;
 /**
  * Created by Chris on 3/27/16.
  */
+
 public class MessageProcessThread extends Thread{
     public static int LISTENING_INTERVAL = 1000;
     public static int TOTAL_SEND_LIMIT = 100;
